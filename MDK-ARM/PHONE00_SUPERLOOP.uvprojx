@@ -434,6 +434,11 @@
               <FilePath>..\Core\Src\call.c</FilePath>
             </File>
             <File>
+              <FileName>sim800.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\sim800.c</FilePath>
+            </File>
+            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/main.c</FilePath>

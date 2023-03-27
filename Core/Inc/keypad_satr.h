@@ -5,5 +5,5 @@
 void keypad_refresh(int Satr_Peyma);
 void OffKeyPad(void);
 void IntruptRutin (void);
-
+char Hrof(int * keypad );
 #endif 

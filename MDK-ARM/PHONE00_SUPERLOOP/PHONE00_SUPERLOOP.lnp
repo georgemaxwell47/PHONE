@@ -8,6 +8,7 @@
 "phone00_superloop\timer.o"
 "phone00_superloop\calender.o"
 "phone00_superloop\call.o"
+"phone00_superloop\sim800.o"
 "phone00_superloop\main.o"
 "phone00_superloop\gpio.o"
 "phone00_superloop\i2c.o"

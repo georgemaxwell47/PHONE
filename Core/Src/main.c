@@ -65,6 +65,11 @@
 #define MENU_CALL_L 7
 #define CALL_L 8
 #define RING 9
+#define SMS_L 10
+#define F_SMS_L 11
+#define NOTE_SMS_L 12
+#define MY_RING_L 13
+#define R_SMS_L 14
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -75,19 +80,36 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+struct sms_r{
+	uint8_t mohtava_counter;
+	char number[11];
+	char tarikh[8];
+	char mohtava[10];
+	char time[5];
+};struct sms_r RING_SMS={0};
+struct sm{
+	uint8_t i;
+	char elhaq[21];
+	char sarehambandi[13];
+	char CBUFF;
+	uint8_t arr[10];
+	char BUFF [11];
+};struct sm SMSS={0,"AT+CMGS=","\""};
 struct Urt{
 	uint8_t counter;
-	int cntlz;
-	int enter;
+	uint8_t cntlz;
+	uint8_t enter;
 	char CHAR_BUFF;
-	char BUFF[30];
+	char BUFF[200];
 };struct Urt UART={0,0x1a,0x0d};
 struct cal{
-	int i;
+	uint8_t i;
+	char elhaq[15];
+	char sarehambandi;
 	char CBUFF;
 	int arr[10];
 	char BUFF [10];
-};struct cal CAL={0};
+	};struct cal CAL={0,"ATD",';'};
 struct date{
 	uint8_t mounth;
 	uint8_t day;
@@ -103,14 +125,25 @@ struct keypad{
 	bool SOTON_3_ON;
 	bool SOTON_4_ON;
 	bool CHANGE_SATR_ALLOW;
-};struct keypad key_pad = {1,0,false,false,false,false,true};
+	uint8_t negahdari_shomar;
+	char namayesh;
+	uint8_t set_x;
+	uint8_t set_y;
+	int counter[10];
+	char negahdari[60];
+};struct keypad key_pad = {1,0,false,false,false,false,true,0,NULL,0,20};
 
 struct flag {
 	bool nimsec;
 	bool nimsec2;
 	bool shishnimsec;
 	bool ring;
-};struct flag flg = {false,false,false,false};
+	bool keypad_tim;
+	bool m;
+	bool sabt;
+	bool allow_namayesh;
+	bool test_bar1;
+};struct flag flg = {false,false,false,false,false,false,false,false,true};
 
 struct CURRENT_TIM {
 	uint16_t SECEND;
@@ -184,6 +217,12 @@ void MENU3(void);
 void CALL (void);
 void FRING (void);
 void IRING (void);
+void menu4 (void);
+void sms_ersal(char *bufer);
+void sms (void);
+void note_sms(void);
+void my_ring(void);
+void r_sms(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -204,6 +243,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM1){
 		flg.nimsec = true;
 		flg.nimsec2 = true;
+		flg.keypad_tim = true;
 		if(timer_shomar == 1){
 			timer_shomar = 0;
 		}
@@ -250,7 +290,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		}
 	}
 }
-	
+	if(htim->Instance == TIM4){
+		flg.sabt = true;
+	}
 }	
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
@@ -267,6 +309,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			}
 			else if(leyer == MENU_CALENDER_L){
 				leyer = MENU_CALL_L;
+			}
+			else if(leyer == MENU_CALL_L){
+				leyer = SMS_L;
 			}
 		}
 		if(GPIO_Pin == KEY_LEFT_EX_Pin){
@@ -299,23 +344,50 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 				leyer = MENU_L;
 			}
 			else if(leyer == RING){
-					leyer = MENU_L;
+				leyer = MENU_L;
+			}
+			else if(leyer == SMS_L){
+				leyer = MENU_L;
+			}
+			else if(leyer == F_SMS_L){
+				leyer = MENU_L;
+			}
+			else if(leyer == NOTE_SMS_L){
+				leyer = SMS_L;
+			}
+			else if(leyer == R_SMS_L){
+				leyer = MENU_L;
+				if(flg.test_bar1){
+					flg.test_bar1 = false;
+					memset(RING_SMS.mohtava,0,sizeof(RING_SMS.mohtava));
+					memset(RING_SMS.number,0,sizeof(RING_SMS.number));
+					memset(RING_SMS.tarikh,0,sizeof(RING_SMS.tarikh));
+					memset(RING_SMS.time,0,sizeof(RING_SMS.time));
+					
+				}
 			}
 		}
 }else{
 	if(GPIO_Pin == SOTON_1_EX_Pin){
 		if(HAL_GPIO_ReadPin(GPIOB,SOTON_1_EX_Pin)){
 			key_pad.CHANGE_SATR_ALLOW = false;
-			if(key_pad.Satr_Peyma == 1)
+			if(key_pad.Satr_Peyma == 1){
 				key_pad.adad = 1;
+				flg.m = true;
+			}
 			else if(key_pad.Satr_Peyma == 2){
 				key_pad.adad = 4;
-					flg2.state = 4;
+				flg2.state = 4;
+				flg.m = true;
 			}
-			else if(key_pad.Satr_Peyma == 3)
+			else if(key_pad.Satr_Peyma == 3){
 				key_pad.adad = 7;
-			else if(key_pad.Satr_Peyma == 4)
+				flg.m = true;
+			}
+			else if(key_pad.Satr_Peyma == 4){
 				key_pad.adad = 10;
+				flg.m = true;
+			}
 		}else
 			key_pad.CHANGE_SATR_ALLOW = true;
 	}
@@ -325,17 +397,22 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			key_pad.CHANGE_SATR_ALLOW = false;
 			if(key_pad.Satr_Peyma == 1){
 				key_pad.adad = 2;
-					flg2.state = 2;
-					
+				flg2.state = 2;
+				flg.m = true;	
 				}
-			else if(key_pad.Satr_Peyma == 2)
+			else if(key_pad.Satr_Peyma == 2){
 				key_pad.adad = 5;
+				flg.m = true;
+			}
 			else if(key_pad.Satr_Peyma == 3){
 				key_pad.adad = 8;
-					flg2.state = 3;
+				flg2.state = 3;
+				flg.m = true;
 			}
-			else if(key_pad.Satr_Peyma == 4)
+			else if(key_pad.Satr_Peyma == 4){
 				key_pad.adad = 0;
+				flg.m = true;
+			}
 		}else
 			key_pad.CHANGE_SATR_ALLOW = true;
 		
@@ -344,16 +421,23 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	else if(GPIO_Pin == SOTON_3_EX_Pin){
 			if(HAL_GPIO_ReadPin(GPIOB,SOTON_3_EX_Pin)){
 			key_pad.CHANGE_SATR_ALLOW = false;
-			if(key_pad.Satr_Peyma == 1)
+			if(key_pad.Satr_Peyma == 1){
 				key_pad.adad = 3;
+				flg.m = true;
+			}
 			else if(key_pad.Satr_Peyma == 2){
 				key_pad.adad = 6;
 				flg2.state = 1;
+				flg.m = true;
 			}
-			else if(key_pad.Satr_Peyma == 3)
+			else if(key_pad.Satr_Peyma == 3){
 				key_pad.adad = 9;
-			else if(key_pad.Satr_Peyma == 4)
+				flg.m = true;
+			}
+			else if(key_pad.Satr_Peyma == 4){
 				key_pad.adad = 11;
+				flg.m = true;
+			}
 		}else
 			key_pad.CHANGE_SATR_ALLOW = true;
 		
@@ -382,7 +466,15 @@ void HAL_UART_RxCpltCallback (UART_HandleTypeDef *huart){
 	//HAL_UART_Transmit(&huart1,(uint8_t *)&UART.CHAR_BUFF,sizeof(UART.CHAR_BUFF),100);
 	if(huart->Instance == USART1){
 		flg.ring = true;
+		UART.BUFF[UART.counter] = UART.CHAR_BUFF;
+		UART.counter++;
+		if(UART.counter > 200){
+			UART.counter = 0;
+			memset(UART.BUFF,0,sizeof(UART.BUFF));
+		}
+		
 }
+	HAL_UART_Receive_IT(&huart1,(uint8_t *)&UART.CHAR_BUFF,sizeof(UART.CHAR_BUFF));
 }
 /* USER CODE END 0 */
 
@@ -421,6 +513,7 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 	
   /* USER CODE END 2 */
@@ -430,16 +523,32 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim1);
 	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_TIM_Base_Start_IT(&htim3);
+	
+	HAL_TIM_Base_Start_IT(&htim4);
+	
+	HAL_GPIO_WritePin(GREN_LED_GPIO_Port,GREN_LED_Pin,GPIO_PIN_SET);
 	ssd1306_Init();
 	OffKeyPad();
 	HAL_UART_Receive_IT(&huart1,(uint8_t *)&UART.CHAR_BUFF,sizeof(UART.CHAR_BUFF));
 	HAL_Delay(5);
-
 	HAL_UART_Transmit(&huart1,(unsigned char*)&("AT"),2,800);
+	HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
+	HAL_Delay(50);
+	HAL_UART_Transmit(&huart1,(uint8_t *)&"AT+CMGF=1",9,100);
+	HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
+	HAL_Delay(50);
+	HAL_UART_Transmit(&huart1,(unsigned char*)&"AT+CNMI=1,2,0,0,0",17,100);
+	HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
+	HAL_Delay(50);
+	//sms_ersal("\"09382035121\"");
   while (1)
   {
 		// KEYPAD
 		keypad_refresh(key_pad.Satr_Peyma);
+		//INTRUPT RING
+		if(flg.ring == true){
+			IRING();
+		}
 		// PREVIEW
 		if(leyer == PREVIEW_L){
 			PREVIEW();
@@ -480,9 +589,23 @@ int main(void)
 		else if(leyer == RING){
 			FRING();
 		}
-		//INTRUPT RING
-		if(flg.ring == true){
-			IRING();
+
+		//MENU SMS
+		else if(leyer == SMS_L){
+			menu4();
+		}
+		//enter number sms
+		else if(leyer == F_SMS_L){
+			sms();
+		}
+		else if(leyer == NOTE_SMS_L){
+			note_sms();
+		}
+		else if(leyer == MY_RING_L){
+			my_ring();
+		}
+		else if(leyer == R_SMS_L){
+			r_sms();
 		}
     /* USER CODE END WHILE */
 
@@ -548,10 +671,25 @@ void CALL (void){
 			CAL.BUFF[i] = 0;
 		}
 			key_pad.adad = 16;
-			HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
 		}
-		
+		else if(key_pad.adad == 15){
+			CAL.BUFF[CAL.i-1]=0;
+			CAL.i--;
+			key_pad.adad = 16;
+		}
+		if(key_pad.adad == 10 && CAL.i == 11){
+			//HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+			key_pad.adad =16;
+			strcat(CAL.elhaq,CAL.BUFF);
+			CAL.elhaq [14] = ';';
+			HAL_Delay(50);
+			HAL_UART_Transmit(&huart1,(uint8_t *)&(CAL.elhaq),15,100);
+			HAL_Delay(50);
+			HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
+			leyer = MY_RING_L;
+		}
 		painter__(0,35,CAL.BUFF,Font_6x8);
+		
 		ssd1306_UpdateScreen();
 	}
 }
@@ -621,7 +759,7 @@ void MENU (void){
 					ssd1306_UpdateScreen();
 				}else{
 					key_pad.adad = 16;
-					leyer = PREVIEW_L;
+					leyer = SNAKE_L;
 		}
 }
 }
@@ -964,6 +1102,7 @@ void FRING (void){
 				HAL_UART_Transmit(&huart1,(uint8_t *)&"ATA",3,100);
 				HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
 				HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.cntlz),1,800);
+				memset(UART.BUFF,0,sizeof(UART.BUFF));
 				key_pad.adad =16;
 			}
 			else if(key_pad.adad == 11){
@@ -971,6 +1110,7 @@ void FRING (void){
 				HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
 				HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.cntlz),1,800);
 				leyer = PREVIEW_L;
+				memset(UART.BUFF,0,sizeof(UART.BUFF));
 				key_pad.adad =16;
 			}
 			ssd1306_UpdateScreen();
@@ -978,21 +1118,230 @@ void FRING (void){
 }
 void IRING (void){
 	flg.ring = false;
-	UART.BUFF [UART.counter] = UART.CHAR_BUFF;
-		UART.counter ++;
-		if(UART.counter == 31){
-			UART.counter =0;
+	//HAL_UART_Transmit(&huart2,(uint8_t *)&UART.BUFF,sizeof(UART.BUFF),1000);
+	//HAL_Delay(100);
+	
+	for(int i=0;i<=60;i++){
+		
+		if(UART.BUFF[i] == 'R' && UART.BUFF[i+1] == 'I' && UART.BUFF[i+2] == 'N' && UART.BUFF[i+3] == 'G'){
+			HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+			memset(UART.BUFF,0,sizeof(UART.BUFF));
+			leyer = RING;
+			UART.counter = 0;
 		}
-		for(int i=0;i<=30;i++){
-			HAL_GPIO_TogglePin(LED_GPIO_Port,LED_Pin);
-			if(UART.BUFF[i] == 'R' && UART.BUFF[i+1] == 'I' && UART.BUFF[i+2] == 'N' && UART.BUFF[i+3] == 'G'){
-				leyer = RING;
-				UART.counter = 0;
+		else if(UART.BUFF[i] == '+' && UART.BUFF[i+1] == 'C' && UART.BUFF[i+2] == 'M' && UART.BUFF[i+3] == 'T'){
+			RING_SMS.number [0] = '0';
+
+			for(int x=0;x<=7;x++){
+				RING_SMS.tarikh[x] = UART.BUFF[i+26+x];
+			}
+			
+			for(int x=1;x<=10;x++){
+				RING_SMS.number[x] = UART.BUFF[i+x+9];
+			}
+			for(int x=0;x<=4;x++){
+				RING_SMS.time[x] = UART.BUFF[i+x+35];
+			}
+			for(int x=0;UART.BUFF[i+x+49] !=0 ;x++){
+				if(UART.BUFF[i+x+49] >= 32 && UART.BUFF[i+x+49] <= 126)
+					RING_SMS.mohtava[x] = UART.BUFF[i+x+49];
+			}
+			
+			//HAL_UART_Transmit(&huart1,(unsigned char*)&"AT+CNMI=1,2,0,0,0",17,100);
+			leyer = R_SMS_L;
+			RING_SMS.mohtava_counter =0;
+//			memset(RING_SMS.mohtava,0,sizeof(RING_SMS.mohtava));
+//			memset(RING_SMS.number,0,sizeof(RING_SMS.number));
+//			memset(RING_SMS.tarikh,0,sizeof(RING_SMS.tarikh));
+//			memset(RING_SMS.time,0,sizeof(RING_SMS.time));
+		}
+	}
+}
+void menu4 (void){
+	if(flg.nimsec)
+	{
+		flg.nimsec = false;
+		ssd1306_Fill(Black);
+		clk_menu(CURRENT_TIME.MIN,CURRENT_TIME.HOUR,CURRENT_TIME.SECEND,ALARM.ALARMHOUR,ALARM.ALARMMIN,ALARM.ALARMSEC);
+		painter__(0,50,"M",Font_6x8);
+		painter__(120,50,"N",Font_6x8);
+		painter__(40,20,"SMS",Font_11x18);
+		ssd1306_UpdateScreen();
+	}
+	if(key_pad.adad == 10){
+		key_pad.adad =16;
+		leyer = F_SMS_L;
+	}
+}
+void sms_ersal(char *bufer){
+	strcat(SMSS.sarehambandi,bufer);
+	strcat(SMSS.sarehambandi,"\"");
+	strcat(SMSS.elhaq,SMSS.sarehambandi);
+	HAL_UART_Transmit(&huart1,(uint8_t *)&"AT+CSMP=49,167,0,8",18,100);
+	HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
+	
+	HAL_Delay(50);
+	HAL_UART_Transmit(&huart1,(uint8_t *)&"AT+CMGF=1",9,100);
+	HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
+	HAL_Delay(50);
+
+	HAL_UART_Transmit(&huart1,(uint8_t *)&SMSS.elhaq,21,100);
+	HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
+	HAL_Delay(50);
+
+	HAL_UART_Transmit(&huart1,(uint8_t *)&key_pad.negahdari,key_pad.negahdari_shomar,100);
+	HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
+	HAL_Delay(50);
+
+	HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.cntlz),1,800);
+
+	HAL_Delay(50);
+	strcpy(SMSS.sarehambandi,"\"");
+	strcpy(SMSS.elhaq,"AT+CMGS=");
+}
+void sms (void){
+	if(flg.nimsec)
+	{
+		flg.nimsec = false;
+		ssd1306_Fill(Black);
+		clk_menu(CURRENT_TIME.MIN,CURRENT_TIME.HOUR,CURRENT_TIME.SECEND,ALARM.ALARMHOUR,ALARM.ALARMMIN,ALARM.ALARMSEC);
+		painter__(0,50,"M",Font_6x8);
+		painter__(0,20,"ENTER THE NUMBER",Font_6x8);
+		if(key_pad.adad <= 9 && SMSS.i<=10){
+			SMSS.CBUFF = yabesh(key_pad.adad,SMSS.i);
+			SMSS.BUFF[SMSS.i] = SMSS.CBUFF; 
+			SMSS.i++;
+			key_pad.adad = 16;
+		}
+		else if(key_pad.adad == 11){
+			SMSS.i = 0;
+		for(int i=0;i<=10;i++){
+			SMSS.BUFF[i] = 0;
+		}
+			key_pad.adad = 16;
+		}
+		if(key_pad.adad == 15){
+			SMSS.i--;
+			SMSS.BUFF[SMSS.i] = 0;
+			key_pad.adad =16;
+		}
+		if(key_pad.adad == 10 && SMSS.i == 11){
+			leyer = NOTE_SMS_L;
+			key_pad.adad =11;
+		}
+		painter__(0,35,SMSS.BUFF,Font_6x8);
+		ssd1306_UpdateScreen();
+	}
+}
+void note_sms(void){
+	if(flg.keypad_tim == false){
+		for(int i=0;i<=9;i++){
+			if(key_pad.adad==i ){
+				
+				key_pad.counter[i]++;
+				if(key_pad.counter[i] == 5){
+					key_pad.counter[i] =1;
+				}
+			}else if(key_pad.adad!=i ){
+				key_pad.counter[i] =0;
 			}
 		}
-		HAL_UART_Receive_IT(&huart1,(uint8_t *)&UART.CHAR_BUFF,sizeof(UART.CHAR_BUFF));
+		if(flg.m){
+			flg.m = false;
+			key_pad.namayesh = Hrof(key_pad.counter);
+		}
 	}
-	
+	else if(flg.keypad_tim){
+		flg.keypad_tim = false;
+		for(int i=1;i<=9;i++){
+			key_pad.counter[i]=0;
+		}
+	}
+	if(key_pad.adad == 12){
+		key_pad.negahdari[key_pad.negahdari_shomar] = key_pad.namayesh;
+		key_pad.negahdari_shomar++;
+		key_pad.adad = 16;
+	}
+	else if(key_pad.adad == 11){
+		key_pad.adad = 16;
+		key_pad.namayesh = NULL;
+		for(int i=0;i<=59;i++){
+			key_pad.negahdari[i] = NULL;
+		}
+		key_pad.negahdari_shomar=0;
+	}
+	else if(key_pad.adad == 15){
+		key_pad.adad = 16;
+		key_pad.namayesh = NULL;
+		key_pad.negahdari[key_pad.negahdari_shomar-1]=NULL;
+		key_pad.negahdari_shomar--;
+		
+	}
+	else if(key_pad.adad == 10){
+		key_pad.adad =16;
+		sms_ersal(SMSS.BUFF);
+		key_pad.namayesh = NULL;
+		for(int i=0;i<=59;i++){
+			key_pad.negahdari[i] = NULL;
+		}
+		key_pad.negahdari_shomar=0;
+		HAL_GPIO_WritePin(GREN_LED_GPIO_Port,GREN_LED_Pin,GPIO_PIN_RESET);
+		HAL_Delay(100);
+		HAL_GPIO_WritePin(GREN_LED_GPIO_Port,GREN_LED_Pin,GPIO_PIN_SET);
+	}
+	if(flg.nimsec){
+		flg.nimsec = false;
+		ssd1306_Fill(Black);
+		clk_menu(CURRENT_TIME.MIN,CURRENT_TIME.HOUR,CURRENT_TIME.SECEND,ALARM.ALARMHOUR,ALARM.ALARMMIN,ALARM.ALARMSEC);
+		painter__(0,50,"M",Font_6x8);
+		//painter__(120,50,"N",Font_6x8);
+		ssd1306_SetCursor(120,0);
+		ssd1306_WriteChar(key_pad.namayesh,Font_6x8,White);
+		
+		ssd1306_SetCursor(key_pad.set_x,key_pad.set_y);
+		ssd1306_WriteString(key_pad.negahdari,Font_6x8,White);
+		
+		ssd1306_UpdateScreen();
+	}
+}
+void my_ring (void){
+	if(key_pad.adad == 11){
+		HAL_UART_Transmit(&huart1,(uint8_t *)&"ATH",3,100);
+		HAL_Delay(50);
+		HAL_UART_Transmit(&huart1,(uint8_t*)&(UART.enter),1,800);
+		leyer = MENU_L;
+	}
+	if(flg.nimsec){
+		flg.nimsec=false;
+		ssd1306_Fill(Black);
+		clk_menu(CURRENT_TIME.MIN,CURRENT_TIME.HOUR,CURRENT_TIME.SECEND,ALARM.ALARMHOUR,ALARM.ALARMMIN,ALARM.ALARMSEC);
+		painter__(0,20,"R",Font_6x8);
+		painter__(40,20,CAL.BUFF,Font_6x8);
+		
+		ssd1306_UpdateScreen();
+	}
+}
+void r_sms(void){
+	if(flg.nimsec){
+		flg.nimsec = false;
+		ssd1306_Fill(Black);
+		clk_menu(CURRENT_TIME.MIN,CURRENT_TIME.HOUR,CURRENT_TIME.SECEND,ALARM.ALARMHOUR,ALARM.ALARMMIN,ALARM.ALARMSEC);
+		ssd1306_SetCursor(20,40);
+		rasm_string_with_char(10,RING_SMS.number);
+		
+		ssd1306_SetCursor(75,0);
+		ssd1306_WriteString(RING_SMS.tarikh,Font_6x8,White);
+		
+		painter__(90,50,RING_SMS.time,Font_6x8);
+		painter__(0,30,RING_SMS.mohtava,Font_6x8);
+		painter__(0,50,"B",Font_6x8);
+		ssd1306_UpdateScreen();
+	}
+	if(key_pad.adad == 11){
+			leyer = MENU_L;
+			
+		}
+}
 /* USER CODE END 4 */
 
 /**

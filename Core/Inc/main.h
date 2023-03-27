@@ -87,6 +87,8 @@ void Error_Handler(void);
 #define KEY_LEFT_EX_Pin GPIO_PIN_15
 #define KEY_LEFT_EX_GPIO_Port GPIOB
 #define KEY_LEFT_EX_EXTI_IRQn EXTI15_10_IRQn
+#define GREN_LED_Pin GPIO_PIN_11
+#define GREN_LED_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
